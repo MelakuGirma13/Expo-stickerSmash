@@ -1,5 +1,4 @@
-import { View, StyleSheet, Text } from "react-native";
-import { useState } from "react";
+import { View, StyleSheet, Text,Platform } from "react-native";
 import Button from "@/app/components/Button";
 import ImageViewer from "@/app/components/ImageViewer";
 import * as ImagePicker from "expo-image-picker";
@@ -10,18 +9,22 @@ import { type ImageSource } from "expo-image";
 import EmojiList from "../components/EmojiList";
 import EmojiSticker from "../components/EmojiSticker";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as MediaLibrary from 'expo-media-library';
+import { useState, useRef } from 'react';
+import { captureRef } from 'react-native-view-shot';
 
 const PlaceholderImage = require("@/assets/images/background-image.png");
 
 export default function Index() {
-  const [selectedImage, setSelectedImage] = useState<string | undefined>(
-    undefined
-  );
+  const [selectedImage, setSelectedImage] = useState<string | undefined>( undefined );
+  const imageRef = useRef<View>(null);
   const [showAppOptions, setShowAppOptions] = useState<boolean>(false);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
-  const [pickedEmoji, setPickedEmoji] = useState<ImageSource | undefined>(
-    undefined
-  );
+  const [pickedEmoji, setPickedEmoji] = useState<ImageSource | undefined>( undefined );
+  const [status, requestPermission] = MediaLibrary.usePermissions(); //https://docs.expo.dev/tutorial/screenshot/#prompt-for-permissions
+  if (status === null) {
+    requestPermission();
+  }
 
   const pickImageAsync = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -43,8 +46,22 @@ export default function Index() {
     setShowAppOptions(false);
   };
 
+
+  //save captured screenshot
   const onSaveImageAsync = async () => {
-    // we will implement this later
+    try {
+      const localUri = await captureRef(imageRef, {
+        height: 440,
+        quality: 1,
+      });
+
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      if (localUri) {
+        alert('Saved!');
+      }
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   const onAddSticker = () => {
@@ -55,17 +72,21 @@ export default function Index() {
     setIsModalVisible(false);
   };
 
+  
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.container}>
         <View style={styles.imageContainer}>
-          <ImageViewer
-            imgSource={PlaceholderImage}
-            selectedImage={selectedImage}
-          />
-          {pickedEmoji && (
-            <EmojiSticker imageSize={40} stickerSource={pickedEmoji} />
-          )}
+           <View ref={imageRef} collapsable={false}>{/* screenshot takes this view */}
+            <Text>view content that is captured</Text>
+            <ImageViewer
+              imgSource={PlaceholderImage}
+              selectedImage={selectedImage}
+            />
+            {pickedEmoji && (
+              <EmojiSticker imageSize={40} stickerSource={pickedEmoji} />
+            )}
+          </View>
         </View>
         {showAppOptions ? (
           <View style={styles.optionsContainer}>
